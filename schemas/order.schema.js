@@ -1,23 +1,14 @@
 const Joi = require('joi');
+const { createNamedCrudSchemas, commonFields, specialValidators } = require('./../utils/schema.factory');
 
-const id = Joi.number().integer();
-const customerId = Joi.number().integer();
-const status = Joi.string().valid('pending', 'confirmed', 'shipped', 'delivered', 'cancelled');
-const total = Joi.number().positive();
+// Definir campos específicos de Order
+const orderFields = {
+  customerId: Joi.number().integer().positive(),
+  status: specialValidators.orderStatus.default('pending'),
+  total: commonFields.price // Reutilizar validador de precio
+};
 
-const createOrderSchema = Joi.object({
-  customerId: customerId.required(),
-  status: status.default('pending'),
-  total: total.required()
-});
+// Generar esquemas CRUD automáticamente - SIN repetición
+const schemas = createNamedCrudSchemas(orderFields, 'order', 'number');
 
-const updateOrderSchema = Joi.object({
-  status: status,
-  total: total
-});
-
-const getOrderSchema = Joi.object({
-  id: id.required(),
-});
-
-module.exports = { createOrderSchema, updateOrderSchema, getOrderSchema }
+module.exports = schemas;

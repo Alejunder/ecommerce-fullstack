@@ -1,21 +1,12 @@
-const Joi = require('joi');
+const { createNamedCrudSchemas, commonFields } = require('./../utils/schema.factory');
 
-const id = Joi.number().integer();
-const name = Joi.string().min(3).max(15);
-const image = Joi.string().uri();
+// Definir campos específicos de Category
+const categoryFields = {
+  name: commonFields.shortName, // min: 3, max: 15
+  image: commonFields.image
+};
 
-const createCategorySchema = Joi.object({
-  name: name.required(),
-  image: image.required()
-});
+// Generar esquemas CRUD automáticamente - SIN repetición
+const schemas = createNamedCrudSchemas(categoryFields, 'category', 'number');
 
-const updateCategorySchema = Joi.object({
-  name: name,
-  image: image
-});
-
-const getCategorySchema = Joi.object({
-  id: id.required(),
-});
-
-module.exports = { createCategorySchema, updateCategorySchema, getCategorySchema }
+module.exports = schemas;

@@ -2,68 +2,113 @@ const express = require('express');
 
 const UserService = require('./../services/user.service');
 const validatorHandler = require('./../middlewares/validator.handler');
-const { updateUserSchema, createUserSchema, getUserSchema } = require('./../schemas/user.schema');
+const { verifyToken, checkRole, checkOwnership } = require('./../middlewares/auth.handler');
+const {
+  updateUserSchema,
+  createUserSchema,
+  getUserSchema,
+  loginSchema,
+  registerSchema
+} = require('./../schemas/user.schema');
+const { createCrudController } = require('./../utils/crud-controller');
 
 const router = express.Router();
 const service = new UserService();
 
-router.get('/', async (req, res, next) => {
-  try {
-    const users = await service.find();
-    res.json(users);
-  } catch (error) {
-    next(error);
-  }
-});
+// Crear controladores CRUD genéricos
+const controller = createCrudController(service, 'user');
+
+// ============ RUTAS CRUD CON AUTORIZACIÓN ============
+
+router.get('/',
+  verifyToken,
+  checkRole(['admin']), // Solo administradores pueden ver todos los usuarios
+  controller.getAll
+);
 
 router.get('/:id',
   validatorHandler(getUserSchema, 'params'),
-  async (req, res, next) => {
-    try {
-      const { id } = req.params;
-      const user = await service.findOne(id);
-      res.json(user);
-    } catch (error) {
-      next(error);
-    }
-  }
+  verifyToken,
+  checkOwnership, // Los usuarios solo pueden ver sus propios datos
+  controller.getOne
 );
 
 router.post('/',
   validatorHandler(createUserSchema, 'body'),
-  async (req, res, next) => {
-    try {
-      const body = req.body;
-      const newUser = await service.create(body);
-      res.status(201).json(newUser);
-    } catch (error) {
-      next(error);
-    }
-  }
+  verifyToken,
+  checkRole(['admin']), // Solo administradores pueden crear usuarios directamente
+  controller.create
 );
 
 router.patch('/:id',
   validatorHandler(getUserSchema, 'params'),
   validatorHandler(updateUserSchema, 'body'),
+  verifyToken,
+  checkOwnership, // Los usuarios solo pueden actualizar sus propios datos
+  controller.update
+);
+
+router.delete('/:id',
+  validatorHandler(getUserSchema, 'params'),
+  verifyToken,
+  checkOwnership,
+  controller.delete
+);
+
+// ============ RUTAS DE AUTENTICACIÓN ============
+
+/**
+ * POST /api/v1/users/register - Registrar nuevo usuario
+ * Body: { email, password, role }
+ */
+router.post('/register',
+  validatorHandler(registerSchema, 'body'),
   async (req, res, next) => {
     try {
-      const { id } = req.params;
       const body = req.body;
-      const user = await service.update(id, body);
-      res.json(user);
+      const newUser = await service.create(body);
+      res.status(201).json({
+        message: 'User registered successfully',
+        user: newUser
+      });
     } catch (error) {
       next(error);
     }
   }
 );
 
-router.delete('/:id',
-  validatorHandler(getUserSchema, 'params'),
+/**
+ * POST /api/v1/users/login - Iniciar sesión
+ * Body: { email, password }
+ * Response: { token, user }
+ */
+router.post('/login',
+  validatorHandler(loginSchema, 'body'),
   async (req, res, next) => {
     try {
-      const { id } = req.params;
-      await service.delete(id);
-      res.status(200).json({id});
+      const { email, password } = req.body;
+      const result = await service.login(email, password);
+      res.json({
+        message: 'Login successful',
+        ...result
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * GET /api/v1/users/profile - Obtener perfil del usuario autenticado
+ * Headers: Authorization: Bearer <token>
+ */
+router.get('/profile',
+  verifyToken,
+  async (req, res, next) => {
+    try {
+      const user = await service.findByEmail(req.user.email);
+      const { password, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
     } catch (error) {
       next(error);
     }

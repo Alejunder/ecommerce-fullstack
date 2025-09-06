@@ -1,24 +1,15 @@
-const Joi = require('joi');
+// ✅ Schemas optimizados para producción usando Schema Factory
+const { createNamedCrudSchemas, commonFields } = require('./../utils/schema.factory');
 
-const id = Joi.string().uuid();
-const name = Joi.string().min(3).max(15);
-const price = Joi.number().integer().min(10);
-const image = Joi.string().uri();
+// Definir campos específicos de Product
+const productFields = {
+  name: commonFields.name, // min: 3, max: 100
+  price: commonFields.price, // positive, precision(2)
+  image: commonFields.image
+};
 
-const createProductSchema = Joi.object({
-  name: name.required(),
-  price: price.required(),
-  image: image.required()
-});
+// Generar esquemas CRUD automáticamente - SIN repetición
+// Usar 'string' porque products usan UUID
+const schemas = createNamedCrudSchemas(productFields, 'product', 'string');
 
-const updateProductSchema = Joi.object({
-  name: name,
-  price: price,
-  image: image
-});
-
-const getProductSchema = Joi.object({
-  id: id.required(),
-});
-
-module.exports = { createProductSchema, updateProductSchema, getProductSchema }
+module.exports = schemas;

@@ -1,0 +1,33 @@
+{
+  "version": 2,
+  "name": "ecommerce-api",
+  "builds": [
+    {
+      "src": "index.js",
+      "use": "@vercel/node",
+      "config": {
+        "maxLambdaSize": "50mb",
+        "runtime": "nodejs18.x"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/v1/(.*)",
+      "dest": "index.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "index.js"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "functions": {
+    "index.js": {
+      "maxDuration": 10
+    }
+  },
+  "regions": ["iad1"]
+}
